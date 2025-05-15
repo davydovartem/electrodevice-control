@@ -15,23 +15,39 @@ stream_protocol::socket &ConnectionHandler::socket()
 
 void ConnectionHandler::start()
 {
-    _socket.async_read_some(boost::asio::buffer(_buffer),
-                            boost::bind(&ConnectionHandler::handleRead, shared_from_this(),
-                                        boost::asio::placeholders::error,
-                                        boost::asio::placeholders::bytes_transferred));
+    std::cout << "Recieving command from client" << std::endl;
+
+    boost::asio::async_read_until(_socket, _buffer, '\n',
+                                  [self = shared_from_this()](const boost::system::error_code &error, size_t bytes_transferred)
+                                  {
+                                      if (error)
+                                      {
+                                          std::cerr << "Read error: " << error.message() << std::endl;
+                                          return;
+                                      }
+                                      self->handleRead(error, bytes_transferred);
+                                  });
 }
 
 void ConnectionHandler::handleRead(const boost::system::error_code &error, size_t bytes_transferred)
 {
-    if (!error)
-    {
-        std::string command(_buffer.data(), bytes_transferred);
-        std::cout << "Received command: " << command << std::endl;
-        std::string response = _server.processCommand(command);
-        boost::asio::async_write(_socket, boost::asio::buffer(response),
-                                 boost::bind(&ConnectionHandler::handleWrite, shared_from_this(),
-                                             boost::asio::placeholders::error));
-    }
+    std::istream stream(&_buffer);
+    std::string command;
+    std::getline(stream, command);
+    _buffer.consume(bytes_transferred);
+
+    std::string response = _server.processCommand(command);
+
+    boost::asio::async_write(_socket, boost::asio::buffer(response),
+                             [self = shared_from_this()](const boost::system::error_code &error, size_t)
+                             {
+                                 if (error)
+                                 {
+                                     std::cerr << "Write error: " << error.message() << std::endl;
+                                     return;
+                                 }
+                                 self->handleWrite(error);
+                             });
 }
 
 void ConnectionHandler::handleWrite(const boost::system::error_code &error)
@@ -58,24 +74,24 @@ Server::~Server()
 
 void Server::run()
 {
-    std::cout << "Server::run()" << std::endl;
+    std::cout << "Server run" << std::endl;
     _io_context.run();
 }
 
 void Server::startAccept()
 {
-    try
-    {
-        auto handler = std::make_shared<ConnectionHandler>(_io_context, *this);
-        _acceptor.async_accept(handler->socket(),
-                               boost::bind(&Server::handleAccept, this, handler, boost::asio::placeholders::error));
-        std::cout << "Server started acceptor" << std::endl;
-    }
-    catch (const boost::system::system_error &e)
-    {
-        std::cerr << "Error in StartAccept(): " << e.what() << std::endl;
-        throw;
-    }
+    std::cout << "Server starting accept commands" << std::endl;
+    auto handler = std::make_shared<ConnectionHandler>(_io_context, *this);
+    _acceptor.async_accept(handler->socket(),
+                           [this, handler](const boost::system::error_code &error)
+                           {
+                               if (error)
+                               {
+                                   std::cerr << "Error in StartAccept(): " << error.message() << std::endl;
+                                   return;
+                               }
+                               handleAccept(handler, error);
+                           });
 }
 
 void Server::handleAccept(std::shared_ptr<ConnectionHandler> handler, const boost::system::error_code &error)

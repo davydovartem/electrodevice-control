@@ -15,8 +15,6 @@ public:
 
     void run();
 
-    std::string processCommand(const std::string &command);
-
 private:
     friend class ConnectionHandler;
 
@@ -25,24 +23,25 @@ private:
 
     boost::asio::io_context _io_context;
     stream_protocol::acceptor _acceptor;
-
     std::string _socket_path;
     int _num_channels;
+
+    std::string processCommand(const std::string &command);
 };
 
 class ConnectionHandler : public std::enable_shared_from_this<ConnectionHandler>
 {
-    public:
-        ConnectionHandler(boost::asio::io_context &io_context, Server &server);
-        stream_protocol::socket &socket();
-        void start();
+public:
+    ConnectionHandler(boost::asio::io_context &io_context, Server &server);
+    stream_protocol::socket &socket();
+    void start();
 
-    private:
-        void handleRead(const boost::system::error_code &error, size_t bytes_transferred);
-        void handleWrite(const boost::system::error_code &error);
+private:
+    void handleRead(const boost::system::error_code &error, size_t bytes_transferred);
+    void handleWrite(const boost::system::error_code &error);
 
-        boost::asio::io_context &_io_context;
-        stream_protocol::socket _socket;
-        Server &_server;
-        std::array<char, 1024> _buffer;
+    boost::asio::io_context &_io_context;
+    stream_protocol::socket _socket;
+    Server &_server;
+    boost::asio::streambuf _buffer;
 };
