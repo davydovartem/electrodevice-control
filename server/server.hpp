@@ -2,6 +2,8 @@
 
 #include <string>
 #include <boost/asio.hpp>
+#include <random>
+#include "channelstate.hpp"
 
 using boost::asio::local::stream_protocol;
 
@@ -14,7 +16,9 @@ public:
     ~Server();
 
     void run();
-
+    int getNumChannels() { return _num_channels; }
+    ChannelState& getChannelState(int channel);
+    bool isChannelExists(int channel) const;
 private:
     friend class ConnectionHandler;
 
@@ -24,7 +28,9 @@ private:
     boost::asio::io_context _io_context;
     stream_protocol::acceptor _acceptor;
     std::string _socket_path;
+
     int _num_channels;
+    std::unordered_map<int, ChannelState> _channels;
 
     std::string processCommand(const std::string &command);
 };

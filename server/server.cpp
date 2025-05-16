@@ -1,7 +1,7 @@
 #include "server.hpp"
 #include <boost/asio.hpp>
-#include <boost/bind/bind.hpp>
 #include <iostream>
+#include "command.hpp"
 
 ConnectionHandler::ConnectionHandler(boost::asio::io_context &io_context, Server &server)
     : _io_context(io_context), _server(server), _socket(io_context)
@@ -15,7 +15,7 @@ stream_protocol::socket &ConnectionHandler::socket()
 
 void ConnectionHandler::start()
 {
-    std::cout << "Recieving command from client" << std::endl;
+    std::cout << "Recieving commands from client" << std::endl;
 
     boost::asio::async_read_until(_socket, _buffer, '\n',
                                   [self = shared_from_this()](const boost::system::error_code &error, size_t bytes_transferred)
@@ -62,8 +62,13 @@ Server::Server(const std::string &socket_path, int num_channels)
     : _socket_path(socket_path), _num_channels(num_channels),
       _io_context(), _acceptor(_io_context, stream_protocol::endpoint(socket_path))
 {
+    for (int i = 0; i < num_channels; ++i)
+    {
+        _channels.emplace(i, ChannelState{});
+    }
     startAccept();
 }
+static std::mt19937 rng(std::random_device{}());
 
 Server::~Server()
 {
@@ -105,7 +110,35 @@ void Server::handleAccept(std::shared_ptr<ConnectionHandler> handler, const boos
     startAccept();
 }
 
+ChannelState &Server::getChannelState(int channel)
+{
+    auto it = _channels.find(channel);
+    if (it == _channels.end())
+    {
+        throw std::out_of_range("Invalid channel number");
+    }
+    return it->second;
+}
+
+bool Server::isChannelExists(int channel) const
+{
+    return _channels.find(channel) != _channels.end();
+}
+
 std::string Server::processCommand(const std::string &command)
 {
-    return "Command received: " + command + "\n";
+    std::cout << "Command received: " << command << std::endl;
+
+    auto cmd = CommandFactory::create(*this, command);
+    if (!cmd)
+        return "fail|invalid_command\n";
+
+    try
+    {
+        return cmd->execute();
+    }
+    catch (const std::exception &e)
+    {
+        return "fail|" + std::string(e.what()) + "\n";
+    }
 }
