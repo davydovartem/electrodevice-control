@@ -83,6 +83,7 @@ Window {
         }
 
         ScrollView {
+            id: scrollView
             Layout.fillWidth: true
             Layout.fillHeight: true
 
@@ -96,6 +97,12 @@ Window {
                 }
                 readOnly: true
                 wrapMode: Text.Wrap
+                function scrollToBottom() {
+                    if (scrollView.contentItem) {
+                        scrollView.contentItem.contentY = output.height - scrollView.height;
+                    }
+                }
+                onTextChanged: Qt.callLater(scrollToBottom);
             }
         }
 
@@ -106,7 +113,7 @@ Window {
                 height: 20
                 radius: 10
                 color: {
-                    if (statusText.text.toLowerCase().includes("connected")) "green"
+                    if (statusText.text.toLowerCase().includes("measure")) "green"
                     else if (statusText.text.toLowerCase().includes("error")) "red"
                     else "gray"
                 }
@@ -114,7 +121,7 @@ Window {
 
             Text {
                 id: statusText
-                text: "IDLE"
+                text: ""
             }
         }
     }
