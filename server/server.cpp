@@ -131,7 +131,7 @@ std::string Server::processCommand(const std::string &command)
 
     auto cmd = CommandFactory::create(*this, command);
     if (!cmd)
-        return "fail|invalid_command\n";
+        return "fail\n";
 
     try
     {
@@ -139,6 +139,6 @@ std::string Server::processCommand(const std::string &command)
     }
     catch (const std::exception &e)
     {
-        return "fail|" + std::string(e.what()) + "\n";
+        return "fail\n";
     }
 }

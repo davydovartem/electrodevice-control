@@ -29,6 +29,10 @@ std::unique_ptr<Command> CommandFactory::create(Server &server, const std::strin
     {
         return std::make_unique<GetResultCommand>(server, ch);
     }
+    if (cmd == "get_status")
+    {
+        return std::make_unique<GetStatusCommand>(server, ch);
+    }
 
     return nullptr;
 }
@@ -92,12 +96,47 @@ std::string GetResultCommand::execute()
         return "fail\n";
     }
 
-    if(channel.getState() != ChannelState::ERROR )
+    if(channel.getState() == ChannelState::ERROR )
     {
         return "fail\n";
     }
     std::stringstream ss;
     ss << "ok, " << channel.makeRandomValue() << "\n";
+
+    return ss.str();
+}
+
+std::string GetStatusCommand::execute()
+{
+    if (!validate())
+        return "fail\n";
+
+    auto &channel = _invoker.getChannelState(_channel);
+
+    if(channel.getState() == ChannelState::ERROR )
+    {
+        return "fail\n";
+    }
+
+    std::stringstream ss;
+    switch(channel.getState())
+    {
+        case ChannelState::IDLE:
+            ss << "ok, idle_state\n";
+            break;
+        case ChannelState::MEASURE:
+            ss << "ok, measure_state\n";
+            break;
+        case ChannelState::ERROR:
+            ss << "ok, error_state\n";
+            break;
+        case ChannelState::BUSY:
+            ss << "ok, busy_state\n";
+            break;
+        default:
+            ss << "fail\n";
+            break;
+    }
 
     return ss.str();
 }

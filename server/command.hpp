@@ -38,6 +38,13 @@ public:
     std::string execute() override;
 };
 
+class GetStatusCommand : public Command
+{
+public:
+    using Command::Command;
+    std::string execute() override;
+};
+
 class CommandFactory
 {
 public:
